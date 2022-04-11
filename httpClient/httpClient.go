@@ -1,6 +1,7 @@
 package httpclient
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,7 +11,9 @@ var Endpoint = make(map[string]string)
 
 type (
 	BotClient interface {
-		GetWebHook(channelId string) (*http.Response, error)
+		CreateWebhook(string, string) (*http.Response, error)
+		GetChannelWebhooks(string) (*http.Response, error)
+		GetGuildWebhooks(string) (*http.Response, error)
 		NewHttpRequest(opts *RequestOpts) (*http.Response, error)
 	}
 	httpClient struct {
@@ -18,10 +21,40 @@ type (
 	}
 )
 
-func (c *httpClient) GetWebHook(channelId string) (*http.Response, error) {
+// Create Webhook
+func (c *httpClient) CreateWebhook(channelId string, hookName string) (*http.Response, error) {
+	res, err := c.NewHttpRequest(&RequestOpts{
+		Method: "POST",
+		Url:    Endpoint["base"] + fmt.Sprintf("channels/%s/webhooks", channelId),
+		Body:   fmt.Sprintf(`{ "name" : "%s" }`, hookName),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return res, err
+}
+
+// Get Channel Webhooks
+func (c *httpClient) GetChannelWebhooks(channelId string) (*http.Response, error) {
 	res, err := c.NewHttpRequest(&RequestOpts{
 		Method: "GET",
 		Url:    Endpoint["base"] + fmt.Sprintf("channels/%s/webhooks", channelId),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return res, err
+}
+
+// Get Guild Webhooks
+func (c *httpClient) GetGuildWebhooks(guildId string) (*http.Response, error) {
+	res, err := c.NewHttpRequest(&RequestOpts{
+		Method: "GET",
+		Url:    Endpoint["base"] + fmt.Sprintf("guilds/%s/webhooks", guildId),
 	})
 
 	if err != nil {
@@ -37,6 +70,16 @@ func (c *httpClient) NewHttpRequest(opts *RequestOpts) (*http.Response, error) {
 
 	if opts.Method == "GET" {
 		req, err = http.NewRequest(opts.Method, opts.Url, nil)
+	} else {
+		bufferBody := bytes.NewBuffer([]byte(opts.Body))
+		req, err = http.NewRequest(opts.Method, opts.Url, bufferBody)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	if len(opts.Headers) > 0 {
+		for _, header := range opts.Headers {
+			req.Header.Set(header.Key, header.Value)
+		}
 	}
 
 	if len(c.token) > 0 {

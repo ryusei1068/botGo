@@ -22,7 +22,7 @@ func GoDotEnvVariable(key string) string {
 func CmdHandle(s *discordgo.Session, m *discordgo.MessageCreate) {
 	channelID := m.ChannelID
 	client := httpClient.NewHttpClient(GoDotEnvVariable("BOTTOKEN"))
-	resp, err := client.GetWebHook(channelID)
+	resp, err := client.CreateWebhook(channelID, "gobot")
 	if err != nil {
 		return
 	}
