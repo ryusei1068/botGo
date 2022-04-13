@@ -7,6 +7,7 @@ import (
 	"os"
 
 	httpClient "github.com/botGo/httpClient"
+	tweetStream "github.com/botGo/twitterStream"
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
 )
@@ -14,6 +15,11 @@ import (
 const (
 	webhook = "https://discord.com/api/webhooks/"
 )
+
+type BotGo struct {
+	client       *httpClient.IHttpClient
+	twitterStrem *tweetStream.ItwitterStream
+}
 
 // command list
 // !stream [key word]
@@ -37,4 +43,10 @@ func CmdHandle(s *discordgo.Session, m *discordgo.MessageCreate) {
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	fmt.Println(string(body))
+}
+
+func newBotGo() *BotGo {
+	httpClient := httpClient.NewHttpClient(GoDotEnvVariable("BOTTOKEN"))
+	twitterStreamer := tweetStream.NewTwitterStreamAPI(GoDotEnvVariable("BEARER_TOKEN"))
+	return &BotGo{client: &httpClient, twitterStrem: &twitterStreamer}
 }
