@@ -10,7 +10,7 @@ import (
 var Endpoint = make(map[string]string)
 
 type (
-	BotClient interface {
+	IHttpClient interface {
 		CreateWebhook(string, string) (*http.Response, error)
 		GetChannelWebhooks(string) (*http.Response, error)
 		GetGuildWebhooks(string) (*http.Response, error)
@@ -64,6 +64,7 @@ func (c *httpClient) GetGuildWebhooks(guildId string) (*http.Response, error) {
 	return res, err
 }
 
+// http Request
 func (c *httpClient) NewHttpRequest(opts *RequestOpts) (*http.Response, error) {
 	var req *http.Request
 	var err error
@@ -96,7 +97,7 @@ func (c *httpClient) NewHttpRequest(opts *RequestOpts) (*http.Response, error) {
 	return resp, nil
 }
 
-func NewHttpClient(token string) BotClient {
+func NewHttpClient(token string) IHttpClient {
 	Endpoint["base"] = "https://discord.com/api/v9/"
 	return &httpClient{token: token}
 }

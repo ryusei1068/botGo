@@ -11,6 +11,14 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const (
+	webhook = "https://discord.com/api/webhooks/"
+)
+
+// command list
+// !stream [key word]
+// !stop [key word]
+
 func GoDotEnvVariable(key string) string {
 	err := godotenv.Load("./.env")
 	if err != nil {
