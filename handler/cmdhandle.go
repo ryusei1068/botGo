@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 
 	httpClient "github.com/botGo/httpClient"
 	tweetStream "github.com/botGo/twitterStream"
@@ -21,6 +22,12 @@ type BotGo struct {
 	twitterStrem *tweetStream.ItwitterStream
 }
 
+type Organizer interface {
+	StartDistribution(string, string)
+	StopDistribution(string)
+	CmdHandle(*discordgo.Session, *discordgo.MessageCreate)
+}
+
 // command list
 // !stream [key word]
 // !stop [key word]
@@ -33,19 +40,33 @@ func GoDotEnvVariable(key string) string {
 	return os.Getenv(key)
 }
 
-func CmdHandle(s *discordgo.Session, m *discordgo.MessageCreate) {
-	channelID := m.ChannelID
-	client := httpClient.NewHttpClient(GoDotEnvVariable("BOTTOKEN"))
-	resp, err := client.CreateWebhook(channelID, "gobot")
+func (b *BotGo) StartDistribution(channelId string, key string) {
+	httpClient := *b.client
+	resp, err := httpClient.CreateWebhook(channelId, key)
+
 	if err != nil {
 		return
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
+
 	fmt.Println(string(body))
 }
 
-func newBotGo() *BotGo {
+func (b *BotGo) StopDistribution(key string) {
+
+}
+
+func (b *BotGo) CmdHandle(s *discordgo.Session, m *discordgo.MessageCreate) {
+	msgArr := strings.Split(m.Content, " ")
+
+	if msgArr[0] == "!stream" {
+		fmt.Println(m.Content)
+	}
+
+}
+
+func NewBotGo() Organizer {
 	httpClient := httpClient.NewHttpClient(GoDotEnvVariable("BOTTOKEN"))
 	twitterStreamer := tweetStream.NewTwitterStreamAPI(GoDotEnvVariable("BEARER_TOKEN"))
 	return &BotGo{client: &httpClient, twitterStrem: &twitterStreamer}

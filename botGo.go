@@ -12,11 +12,14 @@ import (
 
 func main() {
 	discord, err := discordgo.New("Bot " + handler.GoDotEnvVariable("BOTTOKEN"))
+
 	if err != nil {
 		fmt.Println("failed run a bot")
+		return
 	}
 
-	discord.AddHandler(handler.CmdHandle)
+	botGO := handler.NewBotGo()
+	discord.AddHandler(botGO.CmdHandle)
 
 	err = discord.Open()
 
