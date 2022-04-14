@@ -13,7 +13,6 @@ type (
 	IHttpClient interface {
 		CreateWebhook(string, string) (*http.Response, error)
 		GetChannelWebhooks(string) (*http.Response, error)
-		GetGuildWebhooks(string) (*http.Response, error)
 		NewHttpRequest(opts *RequestOpts) (*http.Response, error)
 	}
 	httpClient struct {
@@ -41,20 +40,6 @@ func (c *httpClient) GetChannelWebhooks(channelId string) (*http.Response, error
 	res, err := c.NewHttpRequest(&RequestOpts{
 		Method: "GET",
 		Url:    Endpoint["base"] + fmt.Sprintf("channels/%s/webhooks", channelId),
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return res, err
-}
-
-// Get Guild Webhooks
-func (c *httpClient) GetGuildWebhooks(guildId string) (*http.Response, error) {
-	res, err := c.NewHttpRequest(&RequestOpts{
-		Method: "GET",
-		Url:    Endpoint["base"] + fmt.Sprintf("guilds/%s/webhooks", guildId),
 	})
 
 	if err != nil {
