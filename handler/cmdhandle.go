@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -43,27 +42,26 @@ func GoDotEnvVariable(key string) string {
 
 func (b *BotGo) StartDistribution(channelId string, key string) {
 	httpClient := *b.client
-	resp, err := httpClient.CreateWebhook(channelId, key)
+	webhook, err := httpClient.CreateWebhook(channelId, key)
 
 	if err != nil {
 		return
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
 
-	fmt.Println(string(body))
+	fmt.Println(webhook)
 }
 
 func (b *BotGo) StopDistribution(channelId string, key string) {
 	httpClient := *b.client
-	resp, err := httpClient.GetChannelWebhooks(channelId)
+	webhooks, err := httpClient.GetChannelWebhooks(channelId)
 
 	if err != nil {
 		return
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	fmt.Println(body)
+
+	for i := range webhooks {
+		fmt.Println(webhooks[i].GuildId)
+	}
 }
 
 func (b *BotGo) CmdHandle(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -72,7 +70,7 @@ func (b *BotGo) CmdHandle(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	if msgArr[0] == "!stream" && len(msgArr[1:]) > 0 {
 		b.StartDistribution(channelId, strings.Join(msgArr[1:], " "))
-	} else if msgArr[0] == "!stop" && len(msgArr[1:]) > 1 {
+	} else if msgArr[0] == "!stop" && len(msgArr[1:]) > 0 {
 		b.StopDistribution(channelId, strings.Join(msgArr[1:], " "))
 	}
 
