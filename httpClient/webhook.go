@@ -7,7 +7,7 @@ type Webhook struct {
 	Avatar        string `json:"avatar"`
 	ChannelId     string `json:"channleid"`
 	GuildId       string `json:"guildId"`
-	ApplicationId string `json:"applicationid"`
+	ApplicationId string `json:"applicationid,omitempty"`
 	Token         string `josn:"token"`
-	User          User   `josn:"user"`
+	User          *User  `josn:"user"`
 }

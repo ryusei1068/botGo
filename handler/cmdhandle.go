@@ -59,9 +59,7 @@ func (b *BotGo) StopDistribution(channelId string, key string) {
 		return
 	}
 
-	for i := range webhooks {
-		fmt.Println(webhooks[i].GuildId)
-	}
+	fmt.Println(webhooks)
 }
 
 func (b *BotGo) CmdHandle(s *discordgo.Session, m *discordgo.MessageCreate) {

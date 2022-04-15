@@ -2,9 +2,7 @@ package httpclient
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 )
@@ -13,8 +11,8 @@ var Endpoint = make(map[string]string)
 
 type (
 	IHttpClient interface {
-		CreateWebhook(string, string) (Webhook, error)
-		GetChannelWebhooks(string) ([]Webhook, error)
+		CreateWebhook(string, string) (JsonData, error)
+		GetChannelWebhooks(string) (JsonData, error)
 		NewHttpRequest(opts *RequestOpts) (*http.Response, error)
 	}
 	httpClient struct {
@@ -23,41 +21,34 @@ type (
 )
 
 // Create Webhook
-func (c *httpClient) CreateWebhook(channelId string, hookName string) (Webhook, error) {
-	res, err := c.NewHttpRequest(&RequestOpts{
+func (c *httpClient) CreateWebhook(channelId string, hookName string) (JsonData, error) {
+	opts := &RequestOpts{
 		Method: "POST",
 		Url:    Endpoint["base"] + fmt.Sprintf("channels/%s/webhooks", channelId),
 		Body:   fmt.Sprintf(`{ "name" : "%s" }`, hookName),
-	})
-
-	if err != nil {
-		return Webhook{}, err
 	}
-	var webhook Webhook
-	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
-	json.Unmarshal(body, &webhook)
 
-	return webhook, err
+	res, err := c.NewHttpRequest(opts)
+	if err != nil {
+		return JsonData{}, err
+	}
+
+	return c.ParseJson(opts, res)
 }
 
 // Get Channel Webhooks
-func (c *httpClient) GetChannelWebhooks(channelId string) ([]Webhook, error) {
-	res, err := c.NewHttpRequest(&RequestOpts{
+func (c *httpClient) GetChannelWebhooks(channelId string) (JsonData, error) {
+	opts := &RequestOpts{
 		Method: "GET",
 		Url:    Endpoint["base"] + fmt.Sprintf("channels/%s/webhooks", channelId),
-	})
-
-	if err != nil {
-		return nil, err
 	}
 
-	var webhooks []Webhook
-	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
-	json.Unmarshal([]byte(body), &webhooks)
+	res, err := c.NewHttpRequest(opts)
+	if err != nil {
+		return JsonData{}, err
+	}
 
-	return webhooks, err
+	return c.ParseJson(opts, res)
 }
 
 // http Request
