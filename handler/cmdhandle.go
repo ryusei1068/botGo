@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	httpClient "github.com/botGo/httpClient"
+	httpclient "github.com/botGo/httpClient"
 	tweetStream "github.com/botGo/twitterStream"
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
@@ -19,6 +20,11 @@ const (
 	webhook = "https://discord.com/api/webhooks/"
 )
 
+type Option struct {
+	Keyword   string
+	Operation string
+}
+
 type (
 	BotGo struct {
 		client       *httpClient.IHttpClient
@@ -30,6 +36,7 @@ type (
 		StartDistribution(string, string)
 		StopDistribution(string, string)
 		CmdHandle(*discordgo.Session, *discordgo.MessageCreate)
+		Execute(string, *Option)
 	}
 )
 
@@ -46,14 +53,7 @@ func GoDotEnvVariable(key string) string {
 }
 
 func (b *BotGo) StartDistribution(channelId string, key string) {
-	httpClient := *b.client
-	webhook, err := httpClient.CreateWebhook(channelId, key)
 
-	if err != nil {
-		return
-	}
-
-	fmt.Println(webhook)
 	twitterClient := *b.twitterStrem
 	res, _ := twitterClient.AddRules(key)
 
@@ -61,18 +61,31 @@ func (b *BotGo) StartDistribution(channelId string, key string) {
 }
 
 func (b *BotGo) StopDistribution(channelId string, key string) {
-	httpClient := *b.client
-	webhooks, err := httpClient.GetChannelWebhooks(channelId)
 
-	if err != nil {
-		return
-	}
-
-	fmt.Println(webhooks)
 	twitterClient := *b.twitterStrem
 	res, _ := twitterClient.GetRules()
 
 	fmt.Println(res)
+}
+
+func (b *BotGo) Execute(channelId string, opts *Option) {
+	httpClient := *b.client
+	var json httpclient.JsonData
+	var err error
+
+	if opts.Operation == "!stream" {
+		json, err = httpClient.CreateWebhook(channelId, opts.Keyword)
+	} else if opts.Operation == "!stop" {
+		json, err = httpClient.GetChannelWebhooks(channelId)
+	}
+
+	if err != nil {
+		fmt.Println(err)
+		b.session.ChannelMessageSend(channelId, "Sorry, failed your request!, "+fmt.Sprint(err))
+		return
+	}
+
+	fmt.Println(json)
 }
 
 func (b *BotGo) CmdHandle(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -81,10 +94,11 @@ func (b *BotGo) CmdHandle(s *discordgo.Session, m *discordgo.MessageCreate) {
 	msgArr := strings.Split(m.Content, " ")
 	channelId := m.ChannelID
 
-	if msgArr[0] == "!stream" && len(msgArr[1:]) > 0 {
-		b.StartDistribution(channelId, strings.Join(msgArr[1:], " "))
-	} else if msgArr[0] == "!stop" && len(msgArr[1:]) > 0 {
-		b.StopDistribution(channelId, strings.Join(msgArr[1:], " "))
+	if msgArr[0][0] == '!' && len(msgArr[1:]) > 0 {
+		b.Execute(channelId, &Option{
+			Keyword:   strings.Join(msgArr[1:], " "),
+			Operation: msgArr[0],
+		})
 	}
 
 }
