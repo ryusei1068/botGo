@@ -14,17 +14,18 @@ type (
 	ItwitterStream interface {
 		StreamStweet()
 		AddRules(string) (*rules.TwitterRuleResponse, error)
+		GetRules() (*rules.TwitterRuleResponse, error)
 	}
 )
 
-func (api *TwitterStream) StreamStweet() {
+func (t *TwitterStream) StreamStweet() {
 
 }
 
-func (api *TwitterStream) AddRules(key string) (*rules.TwitterRuleResponse, error) {
+func (t *TwitterStream) AddRules(key string) (*rules.TwitterRuleResponse, error) {
 	rules := twitterstream.NewRuleBuilder().AddRule(key, "-is:retweet").Build()
 
-	res, err := api.api.Rules.Create(rules, false)
+	res, err := t.api.Rules.Create(rules, false)
 
 	if err != nil {
 		return nil, err
@@ -36,6 +37,10 @@ func (api *TwitterStream) AddRules(key string) (*rules.TwitterRuleResponse, erro
 	}
 
 	return res, nil
+}
+
+func (t *TwitterStream) GetRules() (*rules.TwitterRuleResponse, error) {
+	return t.api.Rules.Get()
 }
 
 func NewTwitterStreamAPI(bearerToken string) ItwitterStream {

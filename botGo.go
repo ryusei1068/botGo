@@ -14,7 +14,7 @@ func main() {
 	discord, err := discordgo.New("Bot " + handler.GoDotEnvVariable("BOTTOKEN"))
 
 	if err != nil {
-		fmt.Println("failed run a bot")
+		fmt.Println("failed run a bot,", err)
 		return
 	}
 

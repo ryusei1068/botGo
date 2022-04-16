@@ -54,6 +54,10 @@ func (b *BotGo) StartDistribution(channelId string, key string) {
 	}
 
 	fmt.Println(webhook)
+	twitterClient := *b.twitterStrem
+	res, _ := twitterClient.AddRules(key)
+
+	fmt.Println(res)
 }
 
 func (b *BotGo) StopDistribution(channelId string, key string) {
@@ -65,6 +69,10 @@ func (b *BotGo) StopDistribution(channelId string, key string) {
 	}
 
 	fmt.Println(webhooks)
+	twitterClient := *b.twitterStrem
+	res, _ := twitterClient.GetRules()
+
+	fmt.Println(res)
 }
 
 func (b *BotGo) CmdHandle(s *discordgo.Session, m *discordgo.MessageCreate) {
