@@ -22,6 +22,10 @@ func main() {
 	discord.AddHandler(botGO.CmdHandle)
 
 	err = discord.Open()
+	if err != nil {
+		fmt.Println("error opening connection,", err)
+		return
+	}
 
 	stopBot := make(chan os.Signal, 1)
 
@@ -29,8 +33,5 @@ func main() {
 
 	<-stopBot
 
-	err = discord.Close()
-
-	return
-
+	discord.Close()
 }
