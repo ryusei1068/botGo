@@ -12,6 +12,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// WebHookUrl and Key word
+var WebHookUrl = make(map[string]string)
+
 const (
 	webhook = "https://discord.com/api/webhooks/"
 )
@@ -20,6 +23,8 @@ type (
 	BotGo struct {
 		client       *httpClient.IHttpClient
 		twitterStrem *tweetStream.ItwitterStream
+		session      *discordgo.Session
+		message      *discordgo.MessageCreate
 	}
 	Bot interface {
 		StartDistribution(string, string)
@@ -63,6 +68,8 @@ func (b *BotGo) StopDistribution(channelId string, key string) {
 }
 
 func (b *BotGo) CmdHandle(s *discordgo.Session, m *discordgo.MessageCreate) {
+	b.setSessionAndMsgCreate(s, m)
+
 	msgArr := strings.Split(m.Content, " ")
 	channelId := m.ChannelID
 
@@ -72,6 +79,11 @@ func (b *BotGo) CmdHandle(s *discordgo.Session, m *discordgo.MessageCreate) {
 		b.StopDistribution(channelId, strings.Join(msgArr[1:], " "))
 	}
 
+}
+
+func (b *BotGo) setSessionAndMsgCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+	b.session = s
+	b.message = m
 }
 
 func NewBotGo() Bot {
