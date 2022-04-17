@@ -9,20 +9,22 @@ import (
 	httpClient "github.com/botGo/httpClient"
 	tweetStream "github.com/botGo/twitterStream"
 	"github.com/bwmarrin/discordgo"
+	"github.com/fallenstedt/twitter-stream/rules"
 	"github.com/joho/godotenv"
 )
 
-// WebHookId and Key word
-var WebHookUrl = make(map[string]string)
+type Association struct {
+	word     string
+	url      string
+	streamId string
+}
+
+// WebHookId, Key word, url
+var DirectInfo = make(map[string]Association)
 
 const (
 	webhook = "https://discord.com/api/webhooks/"
 )
-
-type Option struct {
-	Keyword string
-	Command string
-}
 
 type (
 	BotGo struct {
@@ -33,12 +35,18 @@ type (
 		opts          *Option
 		json          httpClient.JsonData
 	}
+
+	Option struct {
+		Keyword string
+		Command string
+	}
+
 	Bot interface {
 		CmdHandle(*discordgo.Session, *discordgo.MessageCreate)
 		execute(string, *Option)
 		streaming(string, *Option, httpClient.JsonData)
-		streamingTweet()
-		stopStreaming()
+		streamingTweet(string)
+		stopStreaming(string)
 	}
 )
 
@@ -54,23 +62,54 @@ func GoDotEnvVariable(key string) string {
 	return os.Getenv(key)
 }
 
-func (b *BotGo) streamingTweet() {
-	url := webhook + fmt.Sprintf("%s/%s", b.json.WebHook.Id, b.json.WebHook.Token)
-	fmt.Println(url)
+func (b *BotGo) findStreamId(rules *rules.TwitterRuleResponse) string {
+	for i := range rules.Errors {
+		if rules.Errors[i].Value == b.opts.Keyword {
+			return rules.Errors[i].Id
+		}
+	}
+
+	for i := range rules.Data {
+		if rules.Data[i].Value == b.opts.Keyword {
+			return rules.Data[i].Id
+		}
+	}
+
+	return ""
 }
 
-func (b *BotGo) stopStreaming() {
+func (b *BotGo) streamingTweet(channelId string) {
+	t := *b.twitterStream
+
+	var streamId string
+	// create new rule of twitter stream
+	rules, _ := t.AddRules(b.opts.Keyword)
+
+	streamId = b.findStreamId(rules)
+	if len(streamId) > 0 {
+		url := webhook + fmt.Sprintf("%s/%s", b.json.WebHook.Id, b.json.WebHook.Token)
+		DirectInfo[b.json.WebHook.Id] = Association{word: b.opts.Keyword, url: url, streamId: streamId}
+		t.InitiateStream()
+	} else {
+		fmt.Println(b)
+		fmt.Println(rules)
+		b.session.ChannelMessageSend(channelId, "Could not start streaming!")
+	}
+}
+
+func (b *BotGo) stopStreaming(channelId string) {
 	url := webhook + fmt.Sprintf("%s/%s", b.json.WebHooks[0].Id, b.json.WebHooks[0].Token)
-	fmt.Println(url)
+	DirectInfo[b.json.WebHooks[0].Id] = Association{word: b.opts.Keyword, url: url}
+	fmt.Println(DirectInfo)
 }
 
 func (b *BotGo) streaming(channelId string, opts *Option, json httpClient.JsonData) {
 	b.setOptsAndJson(opts, json)
 
 	if opts.Command == "!stream" {
-		b.streamingTweet()
+		b.streamingTweet(channelId)
 	} else if opts.Command == "!stop" {
-		b.stopStreaming()
+		b.stopStreaming(channelId)
 	}
 }
 
