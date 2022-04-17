@@ -7,13 +7,12 @@ import (
 	"strings"
 
 	httpClient "github.com/botGo/httpClient"
-	httpclient "github.com/botGo/httpClient"
 	tweetStream "github.com/botGo/twitterStream"
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
 )
 
-// WebHookUrl and Key word
+// WebHookId and Key word
 var WebHookUrl = make(map[string]string)
 
 const (
@@ -21,22 +20,25 @@ const (
 )
 
 type Option struct {
-	Keyword   string
-	Operation string
+	Keyword string
+	Command string
 }
 
 type (
 	BotGo struct {
-		client       *httpClient.IHttpClient
-		twitterStrem *tweetStream.ItwitterStream
-		session      *discordgo.Session
-		message      *discordgo.MessageCreate
+		client        *httpClient.IHttpClient
+		twitterStream *tweetStream.ItwitterStream
+		session       *discordgo.Session
+		message       *discordgo.MessageCreate
+		opts          *Option
+		json          httpClient.JsonData
 	}
 	Bot interface {
-		StartDistribution(string, string)
-		StopDistribution(string, string)
 		CmdHandle(*discordgo.Session, *discordgo.MessageCreate)
-		Execute(string, *Option)
+		execute(string, *Option)
+		streaming(string, *Option, httpClient.JsonData)
+		streamingTweet()
+		stopStreaming()
 	}
 )
 
@@ -52,40 +54,43 @@ func GoDotEnvVariable(key string) string {
 	return os.Getenv(key)
 }
 
-func (b *BotGo) StartDistribution(channelId string, key string) {
-
-	twitterClient := *b.twitterStrem
-	res, _ := twitterClient.AddRules(key)
-
-	fmt.Println(res)
+func (b *BotGo) streamingTweet() {
+	url := webhook + fmt.Sprintf("%s/%s", b.json.WebHook.Id, b.json.WebHook.Token)
+	fmt.Println(url)
 }
 
-func (b *BotGo) StopDistribution(channelId string, key string) {
-
-	twitterClient := *b.twitterStrem
-	res, _ := twitterClient.GetRules()
-
-	fmt.Println(res)
+func (b *BotGo) stopStreaming() {
+	url := webhook + fmt.Sprintf("%s/%s", b.json.WebHooks[0].Id, b.json.WebHooks[0].Token)
+	fmt.Println(url)
 }
 
-func (b *BotGo) Execute(channelId string, opts *Option) {
-	httpClient := *b.client
-	var json httpclient.JsonData
+func (b *BotGo) streaming(channelId string, opts *Option, json httpClient.JsonData) {
+	b.setOptsAndJson(opts, json)
+
+	if opts.Command == "!stream" {
+		b.streamingTweet()
+	} else if opts.Command == "!stop" {
+		b.stopStreaming()
+	}
+}
+
+func (b *BotGo) execute(channelId string, opts *Option) {
+	client := *b.client
+	var json httpClient.JsonData
 	var err error
 
-	if opts.Operation == "!stream" {
-		json, err = httpClient.CreateWebhook(channelId, opts.Keyword)
-	} else if opts.Operation == "!stop" {
-		json, err = httpClient.GetChannelWebhooks(channelId)
+	if opts.Command == "!stream" {
+		json, err = client.CreateWebhook(channelId, opts.Keyword)
+	} else if opts.Command == "!stop" {
+		json, err = client.GetChannelWebhooks(channelId)
 	}
 
 	if err != nil {
 		fmt.Println(err)
 		b.session.ChannelMessageSend(channelId, "Sorry, failed your request!, "+fmt.Sprint(err))
-		return
+	} else {
+		b.streaming(channelId, opts, json)
 	}
-
-	fmt.Println(json)
 }
 
 func (b *BotGo) CmdHandle(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -95,9 +100,9 @@ func (b *BotGo) CmdHandle(s *discordgo.Session, m *discordgo.MessageCreate) {
 	channelId := m.ChannelID
 
 	if msgArr[0][0] == '!' && len(msgArr[1:]) > 0 {
-		b.Execute(channelId, &Option{
-			Keyword:   strings.Join(msgArr[1:], " "),
-			Operation: msgArr[0],
+		b.execute(channelId, &Option{
+			Keyword: strings.Join(msgArr[1:], " "),
+			Command: msgArr[0],
 		})
 	}
 
@@ -108,8 +113,13 @@ func (b *BotGo) setSessionAndMsgCreate(s *discordgo.Session, m *discordgo.Messag
 	b.message = m
 }
 
+func (b *BotGo) setOptsAndJson(opts *Option, json httpClient.JsonData) {
+	b.json = json
+	b.opts = opts
+}
+
 func NewBotGo() Bot {
 	httpClient := httpClient.NewHttpClient(GoDotEnvVariable("BOTTOKEN"))
-	twitterStreamer := tweetStream.NewTwitterStreamAPI(GoDotEnvVariable("BEARER_TOKEN"))
-	return &BotGo{client: &httpClient, twitterStrem: &twitterStreamer}
+	twitterStream := tweetStream.NewTwitterStreamAPI(GoDotEnvVariable("BEARER_TOKEN"))
+	return &BotGo{client: &httpClient, twitterStream: &twitterStream}
 }
