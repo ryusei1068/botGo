@@ -12,15 +12,10 @@ type (
 		api *twitterstream.TwitterApi
 	}
 	ItwitterStream interface {
-		StreamStweet()
 		AddRules(string) (*rules.TwitterRuleResponse, error)
 		GetRules() (*rules.TwitterRuleResponse, error)
 	}
 )
-
-func (t *TwitterStream) StreamStweet() {
-
-}
 
 func (t *TwitterStream) AddRules(key string) (*rules.TwitterRuleResponse, error) {
 	rules := twitterstream.NewRuleBuilder().AddRule(key, "-is:retweet").Build()
@@ -33,7 +28,7 @@ func (t *TwitterStream) AddRules(key string) (*rules.TwitterRuleResponse, error)
 
 	if res.Errors != nil && len(res.Errors) > 0 {
 		fmt.Printf("Received an error from twitter: %v", res.Errors)
-		return nil, err
+		return res, err
 	}
 
 	return res, nil
