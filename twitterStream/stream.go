@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	httpclient "github.com/botGo/httpClient"
 	twitterstream "github.com/fallenstedt/twitter-stream"
 	"github.com/fallenstedt/twitter-stream/rules"
 	"github.com/fallenstedt/twitter-stream/stream"
@@ -12,7 +13,8 @@ import (
 
 type (
 	TwitterStream struct {
-		api *twitterstream.TwitterApi
+		api        *twitterstream.TwitterApi
+		directInfo map[string]Association
 	}
 	ItwitterStream interface {
 		AddRules(string) (*rules.TwitterRuleResponse, error)
@@ -100,7 +102,6 @@ func (t *TwitterStream) AddRules(key string) (*rules.TwitterRuleResponse, error)
 
 	if res.Errors != nil && len(res.Errors) > 0 {
 		fmt.Printf("Received an error from twitter: %v", res.Errors)
-		return res, err
 	}
 
 	return res, nil
@@ -108,6 +109,16 @@ func (t *TwitterStream) AddRules(key string) (*rules.TwitterRuleResponse, error)
 
 func (t *TwitterStream) GetRules() (*rules.TwitterRuleResponse, error) {
 	return t.api.Rules.Get()
+}
+
+func (t *TwitterStream) sendAMsgToDiscord() {
+
+}
+
+func (t *TwitterStream) SetDirectInfo(json httpclient.JsonData, keyword string, streamId string) {
+	url := webhook + fmt.Sprintf("%s/%s", json.WebHook.Id, json.WebHook.Token)
+	DirectInfo[json.WebHook.Id] = Association{word: keyword, url: url, streamId: streamId}
+	t.directInfo = DirectInfo
 }
 
 func NewTwitterStreamAPI(bearerToken string) ItwitterStream {
