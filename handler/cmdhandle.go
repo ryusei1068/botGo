@@ -13,19 +13,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type Association struct {
-	word     string
-	url      string
-	streamId string
-}
-
-// WebHookId, Key word, url
-var DirectInfo = make(map[string]Association)
-
-const (
-	webhook = "https://discord.com/api/webhooks/"
-)
-
 type (
 	BotGo struct {
 		client        *httpClient.IHttpClient
@@ -50,10 +37,6 @@ type (
 	}
 )
 
-// command list
-// !stream [key word]
-// !stop [key word]
-
 func GoDotEnvVariable(key string) string {
 	err := godotenv.Load("./.env")
 	if err != nil {
@@ -64,13 +47,13 @@ func GoDotEnvVariable(key string) string {
 
 func (b *BotGo) findStreamId(rules *rules.TwitterRuleResponse) string {
 	for i := range rules.Errors {
-		if rules.Errors[i].Value == b.opts.Keyword {
+		if rules.Errors[i].Value == fmt.Sprintf("(%s -is:retweet -has:mentions -is:reply -is:quote)", b.opts.Keyword) {
 			return rules.Errors[i].Id
 		}
 	}
 
 	for i := range rules.Data {
-		if rules.Data[i].Value == b.opts.Keyword {
+		if rules.Data[i].Tag == b.opts.Keyword {
 			return rules.Data[i].Id
 		}
 	}
@@ -80,6 +63,7 @@ func (b *BotGo) findStreamId(rules *rules.TwitterRuleResponse) string {
 
 func (b *BotGo) streamingTweet(channelId string) {
 	t := *b.twitterStream
+	c := b.client
 
 	var streamId string
 	// create new rule of twitter stream
@@ -87,9 +71,8 @@ func (b *BotGo) streamingTweet(channelId string) {
 
 	streamId = b.findStreamId(rules)
 	if len(streamId) > 0 {
-		url := webhook + fmt.Sprintf("%s/%s", b.json.WebHook.Id, b.json.WebHook.Token)
-		DirectInfo[b.json.WebHook.Id] = Association{word: b.opts.Keyword, url: url, streamId: streamId}
-		t.InitiateStream()
+		t.SetDirectInfo(b.json, b.opts.Keyword, streamId)
+		t.InitiateStream(c)
 	} else {
 		fmt.Println(b)
 		fmt.Println(rules)
@@ -98,9 +81,7 @@ func (b *BotGo) streamingTweet(channelId string) {
 }
 
 func (b *BotGo) stopStreaming(channelId string) {
-	url := webhook + fmt.Sprintf("%s/%s", b.json.WebHooks[0].Id, b.json.WebHooks[0].Token)
-	DirectInfo[b.json.WebHooks[0].Id] = Association{word: b.opts.Keyword, url: url}
-	fmt.Println(DirectInfo)
+
 }
 
 func (b *BotGo) streaming(channelId string, opts *Option, json httpClient.JsonData) {
