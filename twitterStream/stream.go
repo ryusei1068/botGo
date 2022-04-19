@@ -14,12 +14,13 @@ import (
 type (
 	TwitterStream struct {
 		api        *twitterstream.TwitterApi
-		directInfo map[string]Association
+		directInfo map[Keys]Association
 	}
 	ItwitterStream interface {
 		AddRules(string) (*rules.TwitterRuleResponse, error)
 		GetRules() (*rules.TwitterRuleResponse, error)
-		InitiateStream()
+		InitiateStream(httpclient.IHttpClient)
+		SetDirectInfo(*httpclient.JsonData, string, string)
 	}
 )
 
@@ -70,12 +71,12 @@ func (t *TwitterStream) fetchTweets() stream.IStream {
 	return api
 }
 
-func (t *TwitterStream) InitiateStream() {
+func (t *TwitterStream) InitiateStream(c httpclient.IHttpClient) {
 	fmt.Println("Starting Stream")
 
 	api := t.fetchTweets()
 
-	defer t.InitiateStream()
+	defer t.InitiateStream(c)
 
 	for tweet := range api.GetMessages() {
 		if tweet.Err != nil {
@@ -85,14 +86,15 @@ func (t *TwitterStream) InitiateStream() {
 		}
 
 		result := tweet.Data.(StreamData)
-		fmt.Println(result.Data)
+		t.sendAMsgToDiscord(result, c)
 	}
 
 	fmt.Println("Stopped Stream")
 }
 
 func (t *TwitterStream) AddRules(key string) (*rules.TwitterRuleResponse, error) {
-	rules := twitterstream.NewRuleBuilder().AddRule(key, "-is:retweet").Build()
+	rules := twitterstream.NewRuleBuilder().AddRule(
+		fmt.Sprintf("(%s -is:retweet -has:mentions -is:reply -is:quote)", key), key).Build()
 
 	res, err := t.api.Rules.Create(rules, false)
 
@@ -111,13 +113,29 @@ func (t *TwitterStream) GetRules() (*rules.TwitterRuleResponse, error) {
 	return t.api.Rules.Get()
 }
 
-func (t *TwitterStream) sendAMsgToDiscord() {
-
+func (t *TwitterStream) sendAMsgToDiscord(data StreamData, c httpclient.IHttpClient) {
+	var text string
+	text = data.Data.Text
+	tag := data.MatchingRules[0].Tag
+	for _, value := range t.directInfo {
+		if tag == value.word {
+			opts := &httpclient.RequestOpts{
+				Method: "POST",
+				Url:    value.url,
+				Body:   fmt.Sprintf(`{ "content" : "%s" }`, text),
+			}
+			res, err := c.NewHttpRequest(opts)
+			if err != nil {
+				fmt.Println(err)
+			}
+			fmt.Println(res)
+		}
+	}
 }
 
-func (t *TwitterStream) SetDirectInfo(json httpclient.JsonData, keyword string, streamId string) {
+func (t *TwitterStream) SetDirectInfo(json *httpclient.JsonData, keyword string, streamId string) {
 	url := webhook + fmt.Sprintf("%s/%s", json.WebHook.Id, json.WebHook.Token)
-	DirectInfo[json.WebHook.Id] = Association{word: keyword, url: url, streamId: streamId}
+	DirectInfo[Keys{streamId: streamId, webhookId: json.WebHook.Id, tag: keyword}] = Association{word: keyword, url: url}
 	t.directInfo = DirectInfo
 }
 
