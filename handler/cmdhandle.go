@@ -63,7 +63,6 @@ func (b *BotGo) findStreamId(rules *rules.TwitterRuleResponse) string {
 
 func (b *BotGo) streamingTweet(channelId string) {
 	t := *b.twitterStream
-	c := b.client
 
 	var streamId string
 	// create new rule of twitter stream
@@ -71,8 +70,8 @@ func (b *BotGo) streamingTweet(channelId string) {
 
 	streamId = b.findStreamId(rules)
 	if len(streamId) > 0 {
-		t.SetDirectInfo(b.json, b.opts.Keyword, streamId)
-		t.InitiateStream(c)
+		t.SetDirectInfo(&b.json, b.opts.Keyword, streamId)
+		t.InitiateStream(*b.client)
 	} else {
 		fmt.Println(b)
 		fmt.Println(rules)

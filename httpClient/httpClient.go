@@ -81,7 +81,7 @@ func (c *httpClient) NewHttpRequest(opts *RequestOpts) (*http.Response, error) {
 		return nil, err
 	}
 
-	return resp, nil
+	return c.HandleResponse(resp, opts, c.NewHttpRequest)
 }
 
 func NewHttpClient(token string) IHttpClient {
