@@ -3,6 +3,8 @@ package twitterstream
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	httpclient "github.com/botGo/httpClient"
@@ -19,7 +21,7 @@ type (
 	ItwitterStream interface {
 		AddRules(string) (*rules.TwitterRuleResponse, error)
 		GetRules() (*rules.TwitterRuleResponse, error)
-		InitiateStream(httpclient.IHttpClient)
+		InitiateStream()
 		SetDirectInfo(*httpclient.JsonData, string, string)
 	}
 )
@@ -71,25 +73,25 @@ func (t *TwitterStream) fetchTweets() stream.IStream {
 	return api
 }
 
-func (t *TwitterStream) InitiateStream(c httpclient.IHttpClient) {
-	fmt.Println("Starting Stream")
-
+func (t *TwitterStream) InitiateStream() {
+	log.Println("Starting Stream")
+	fmt.Printf("twitter stream object %v", t)
 	api := t.fetchTweets()
 
-	defer t.InitiateStream(c)
+	defer t.InitiateStream()
 
 	for tweet := range api.GetMessages() {
 		if tweet.Err != nil {
-			fmt.Printf("got error from twitter: %v", tweet.Err)
+			log.Printf("got error from twitter: %v", tweet.Err)
 			api.StopStream()
 			continue
 		}
 
 		result := tweet.Data.(StreamData)
-		t.sendAMsgToDiscord(result, c)
+		t.sendAMsgToDiscord(result)
 	}
 
-	fmt.Println("Stopped Stream")
+	log.Println("Stopped Stream")
 }
 
 func (t *TwitterStream) AddRules(key string) (*rules.TwitterRuleResponse, error) {
@@ -103,7 +105,7 @@ func (t *TwitterStream) AddRules(key string) (*rules.TwitterRuleResponse, error)
 	}
 
 	if res.Errors != nil && len(res.Errors) > 0 {
-		fmt.Printf("Received an error from twitter: %v", res.Errors)
+		log.Printf("Received an error from twitter: %v", res.Errors)
 	}
 
 	return res, nil
@@ -113,22 +115,26 @@ func (t *TwitterStream) GetRules() (*rules.TwitterRuleResponse, error) {
 	return t.api.Rules.Get()
 }
 
-func (t *TwitterStream) sendAMsgToDiscord(data StreamData, c httpclient.IHttpClient) {
+func (t *TwitterStream) sendAMsgToDiscord(data StreamData) {
 	var text string
 	text = data.Data.Text
 	tag := data.MatchingRules[0].Tag
-	for _, value := range t.directInfo {
-		if tag == value.word {
-			opts := &httpclient.RequestOpts{
-				Method: "POST",
-				Url:    value.url,
-				Body:   fmt.Sprintf(`{ "content" : "%s" }`, text),
+	h := new(httpclient.HttpClient)
+
+	if len(text) > 0 {
+		for _, value := range t.directInfo {
+			if tag == value.word {
+				opts := &httpclient.RequestOpts{
+					Method: "POST",
+					Url:    value.url,
+					Body:   fmt.Sprintf(`{ "content" : "%s" }`, strings.Join(strings.Split(text, "\n"), " ")),
+				}
+				res, err := h.NewHttpRequest(opts)
+				if err != nil {
+					log.Println(err)
+				}
+				log.Println(res.Body)
 			}
-			res, err := c.NewHttpRequest(opts)
-			if err != nil {
-				fmt.Println(err)
-			}
-			fmt.Println(res)
 		}
 	}
 }
