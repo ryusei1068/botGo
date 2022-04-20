@@ -71,10 +71,10 @@ func (b *BotGo) streamingTweet(channelId string) {
 	streamId = b.findStreamId(rules)
 	if len(streamId) > 0 {
 		t.SetDirectInfo(&b.json, b.opts.Keyword, streamId)
-		t.InitiateStream(*b.client)
+		t.InitiateStream()
 	} else {
-		fmt.Println(b)
-		fmt.Println(rules)
+		log.Println(b)
+		log.Println(rules)
 		b.session.ChannelMessageSend(channelId, "Could not start streaming!")
 	}
 }
@@ -105,7 +105,7 @@ func (b *BotGo) execute(channelId string, opts *Option) {
 	}
 
 	if err != nil {
-		fmt.Println(err)
+		log.Printf("%s", err)
 		b.session.ChannelMessageSend(channelId, "Sorry, failed your request!, "+fmt.Sprint(err))
 	} else {
 		b.streaming(channelId, opts, json)
