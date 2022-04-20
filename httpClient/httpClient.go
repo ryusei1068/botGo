@@ -15,13 +15,13 @@ type (
 		GetChannelWebhooks(string) (JsonData, error)
 		NewHttpRequest(opts *RequestOpts) (*http.Response, error)
 	}
-	httpClient struct {
+	HttpClient struct {
 		token string
 	}
 )
 
 // Create Webhook
-func (c *httpClient) CreateWebhook(channelId string, hookName string) (JsonData, error) {
+func (c *HttpClient) CreateWebhook(channelId string, hookName string) (JsonData, error) {
 	opts := &RequestOpts{
 		Method: "POST",
 		Url:    Endpoint["base"] + fmt.Sprintf("channels/%s/webhooks", channelId),
@@ -37,7 +37,7 @@ func (c *httpClient) CreateWebhook(channelId string, hookName string) (JsonData,
 }
 
 // Get Channel Webhooks
-func (c *httpClient) GetChannelWebhooks(channelId string) (JsonData, error) {
+func (c *HttpClient) GetChannelWebhooks(channelId string) (JsonData, error) {
 	opts := &RequestOpts{
 		Method: "GET",
 		Url:    Endpoint["base"] + fmt.Sprintf("channels/%s/webhooks", channelId),
@@ -52,7 +52,7 @@ func (c *httpClient) GetChannelWebhooks(channelId string) (JsonData, error) {
 }
 
 // http Request
-func (c *httpClient) NewHttpRequest(opts *RequestOpts) (*http.Response, error) {
+func (c *HttpClient) NewHttpRequest(opts *RequestOpts) (*http.Response, error) {
 	var req *http.Request
 	var err error
 
@@ -81,10 +81,11 @@ func (c *httpClient) NewHttpRequest(opts *RequestOpts) (*http.Response, error) {
 		return nil, err
 	}
 
-	return c.HandleResponse(resp, opts, c.NewHttpRequest)
+	h := new(HttpResponseHandler)
+	return h.HandleResponse(resp, opts, c.NewHttpRequest)
 }
 
 func NewHttpClient(token string) IHttpClient {
 	Endpoint["base"] = "https://discord.com/api/v9/"
-	return &httpClient{token: token}
+	return &HttpClient{token: token}
 }

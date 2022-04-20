@@ -16,7 +16,18 @@ type JsonData struct {
 	WebHook  Webhook
 }
 
-func (c *httpClient) ParseJson(opts *RequestOpts, resp *http.Response) (JsonData, error) {
+const (
+	Nanosecond  time.Duration = 1
+	Microsecond               = 1000 * Nanosecond
+	Millisecond               = 1000 * Microsecond
+	Second                    = 1000 * Millisecond
+	Minute                    = 60 * Second
+	Hour                      = 60 * Minute
+)
+
+type HttpResponseHandler struct{}
+
+func (c *HttpClient) ParseJson(opts *RequestOpts, resp *http.Response) (JsonData, error) {
 	var webhooks []Webhook // GET
 	var webhook Webhook    // POST
 	data := JsonData{WebHooks: webhooks, WebHook: webhook}
@@ -42,7 +53,7 @@ func (c *httpClient) ParseJson(opts *RequestOpts, resp *http.Response) (JsonData
 	return data, nil
 }
 
-func (c *httpClient) HandleResponse(resp *http.Response, opts *RequestOpts, fn func(opts *RequestOpts) (*http.Response, error)) (*http.Response, error) {
+func (c HttpResponseHandler) HandleResponse(resp *http.Response, opts *RequestOpts, fn func(opts *RequestOpts) (*http.Response, error)) (*http.Response, error) {
 	if resp.StatusCode == 429 {
 		log.Printf("Retrying network request %s with backoff", opts.Url)
 
@@ -55,18 +66,25 @@ func (c *httpClient) HandleResponse(resp *http.Response, opts *RequestOpts, fn f
 		}
 		log.Printf(msg)
 
-		var delay time.Duration = 30
+		var delay time.Duration
 		var retrySec int
+		var e error
 		retry := resp.Header.Get("retry-after")
+		rateLimitReset := resp.Header.Get("x-rate-limit-reset")
+
 		if len(retry) > 0 {
-			intVar, err := strconv.Atoi(retry)
-			if err != nil {
-				retrySec = 30
-			} else {
-				retrySec = intVar
-			}
-			delay = time.Duration(retrySec)
+			retrySec, e = strconv.Atoi(retry)
+		} else {
+			retrySec, e = strconv.Atoi(rateLimitReset)
 		}
+
+		if e != nil {
+			fmt.Println("failed convert string to int")
+			retrySec = 1000
+		}
+
+		delay = time.Duration(retrySec * int(Second))
+		log.Println(delay)
 
 		log.Printf("Sleeping for %v seconds", delay)
 		time.Sleep(delay)
