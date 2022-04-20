@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	twitterstream "github.com/fallenstedt/twitter-stream"
 	"github.com/fallenstedt/twitter-stream/rules"
 	"github.com/fallenstedt/twitter-stream/stream"
+	"github.com/joho/godotenv"
 )
 
 type (
@@ -46,8 +48,16 @@ type StreamData struct {
 	} `json:"matching_rules"`
 }
 
+func GoDotEnvVariable(key string) string {
+	err := godotenv.Load("./.env")
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+	return os.Getenv(key)
+}
+
 func (t *TwitterStream) fetchTweets() stream.IStream {
-	api := t.api.Stream
+	api := getTwitterStreamApi(GoDotEnvVariable("BEARER_TOKEN"))
 
 	var err error
 	api.SetUnmarshalHook(func(bytes []byte) (interface{}, error) {
@@ -75,7 +85,7 @@ func (t *TwitterStream) fetchTweets() stream.IStream {
 
 func (t *TwitterStream) InitiateStream() {
 	log.Println("Starting Stream")
-	fmt.Printf("twitter stream object %v", t)
+	fmt.Printf("twitter stream object %v", t.api.Stream)
 	api := t.fetchTweets()
 
 	defer t.InitiateStream()
@@ -143,6 +153,10 @@ func (t *TwitterStream) SetDirectInfo(json *httpclient.JsonData, keyword string,
 	url := webhook + fmt.Sprintf("%s/%s", json.WebHook.Id, json.WebHook.Token)
 	DirectInfo[Keys{streamId: streamId, webhookId: json.WebHook.Id, tag: keyword}] = Association{word: keyword, url: url}
 	t.directInfo = DirectInfo
+}
+
+func getTwitterStreamApi(tok string) stream.IStream {
+	return twitterstream.NewTwitterStream(tok).Stream
 }
 
 func NewTwitterStreamAPI(bearerToken string) ItwitterStream {
