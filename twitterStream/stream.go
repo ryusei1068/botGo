@@ -131,6 +131,8 @@ func (t *TwitterStream) sendAMsgToDiscord(data StreamData) {
 	tag := data.MatchingRules[0].Tag
 	h := new(httpclient.HttpClient)
 
+	fmt.Println(text, tag)
+
 	if len(text) > 0 {
 		for _, value := range t.directInfo {
 			if tag == value.word {

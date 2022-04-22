@@ -3,14 +3,12 @@ package handler
 import (
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	httpClient "github.com/botGo/httpClient"
 	tweetStream "github.com/botGo/twitterStream"
 	"github.com/bwmarrin/discordgo"
 	"github.com/fallenstedt/twitter-stream/rules"
-	"github.com/joho/godotenv"
 )
 
 type (
@@ -36,14 +34,6 @@ type (
 		stopStreaming(string)
 	}
 )
-
-func GoDotEnvVariable(key string) string {
-	err := godotenv.Load("./.env")
-	if err != nil {
-		log.Fatalf("Error loading .env file")
-	}
-	return os.Getenv(key)
-}
 
 func (b *BotGo) findStreamId(rules *rules.TwitterRuleResponse) string {
 	for i := range rules.Errors {
@@ -138,7 +128,7 @@ func (b *BotGo) setOptsAndJson(opts *Option, json httpClient.JsonData) {
 }
 
 func NewBotGo() Bot {
-	httpClient := httpClient.NewHttpClient(GoDotEnvVariable("BOTTOKEN"))
-	twitterStream := tweetStream.NewTwitterStreamAPI(GoDotEnvVariable("BEARER_TOKEN"))
+	httpClient := httpClient.NewHttpClient(tweetStream.GoDotEnvVariable("BOTTOKEN"))
+	twitterStream := tweetStream.NewTwitterStreamAPI(tweetStream.GoDotEnvVariable("BEARER_TOKEN"))
 	return &BotGo{client: &httpClient, twitterStream: &twitterStream}
 }

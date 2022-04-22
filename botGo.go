@@ -7,11 +7,12 @@ import (
 	"syscall"
 
 	handler "github.com/botGo/handler"
+	twitterstream "github.com/botGo/twitterStream"
 	"github.com/bwmarrin/discordgo"
 )
 
 func main() {
-	discord, err := discordgo.New("Bot " + handler.GoDotEnvVariable("BOTTOKEN"))
+	discord, err := discordgo.New("Bot " + twitterstream.GoDotEnvVariable("BOTTOKEN"))
 
 	if err != nil {
 		fmt.Println("failed run a bot,", err)

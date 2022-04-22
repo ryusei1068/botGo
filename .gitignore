@@ -2,3 +2,4 @@ botGo
 .env
 httpClient/*_test.go
 /streaming
+/redis
