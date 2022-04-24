@@ -1,5 +1,5 @@
 botGo
-.env
+/config
 httpClient/*_test.go
 /streaming
-/redis
+redis/*_test.go
