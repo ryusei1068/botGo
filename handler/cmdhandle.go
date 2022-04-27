@@ -5,20 +5,23 @@ import (
 	"log"
 	"strings"
 
+	"github.com/botGo/config"
 	httpClient "github.com/botGo/httpClient"
+	"github.com/botGo/redis"
 	tweetStream "github.com/botGo/twitterStream"
 	"github.com/bwmarrin/discordgo"
 	"github.com/fallenstedt/twitter-stream/rules"
 )
 
+const basewebhook = "https://discord.com/api/webhooks/"
+
 type (
 	BotGo struct {
 		client        *httpClient.IHttpClient
 		twitterStream *tweetStream.ItwitterStream
+		redisClient   *redis.IRedis
 		session       *discordgo.Session
 		message       *discordgo.MessageCreate
-		opts          *Option
-		json          httpClient.JsonData
 	}
 
 	Option struct {
@@ -30,20 +33,20 @@ type (
 		CmdHandle(*discordgo.Session, *discordgo.MessageCreate)
 		execute(string, *Option)
 		streaming(string, *Option, httpClient.JsonData)
-		streamingTweet(string)
-		stopStreaming(string)
+		streamingTweet(string, *Option, httpClient.JsonData)
+		stopStreaming(string, httpClient.JsonData)
 	}
 )
 
-func (b *BotGo) findStreamId(rules *rules.TwitterRuleResponse) string {
+func (b *BotGo) findStreamId(rules *rules.TwitterRuleResponse, opts *Option) string {
 	for i := range rules.Errors {
-		if rules.Errors[i].Value == fmt.Sprintf("(%s -is:retweet -has:mentions -is:reply -is:quote)", b.opts.Keyword) {
+		if rules.Errors[i].Value == fmt.Sprintf("(%s -is:retweet -has:mentions -is:reply -is:quote)", opts.Keyword) {
 			return rules.Errors[i].Id
 		}
 	}
 
 	for i := range rules.Data {
-		if rules.Data[i].Tag == b.opts.Keyword {
+		if rules.Data[i].Tag == opts.Keyword {
 			return rules.Data[i].Id
 		}
 	}
@@ -51,16 +54,18 @@ func (b *BotGo) findStreamId(rules *rules.TwitterRuleResponse) string {
 	return ""
 }
 
-func (b *BotGo) streamingTweet(channelId string) {
+func (b *BotGo) streamingTweet(channelId string, opts *Option, json httpClient.JsonData) {
 	t := *b.twitterStream
-
+	r := *b.redisClient
 	var streamId string
 	// create new rule of twitter stream
-	rules, _ := t.AddRules(b.opts.Keyword)
+	rules, _ := t.AddRules(opts.Keyword)
 
-	streamId = b.findStreamId(rules)
+	streamId = b.findStreamId(rules, opts)
 	if len(streamId) > 0 {
-		t.SetDirectInfo(&b.json, b.opts.Keyword, streamId)
+		direct := newDirectInfo(json, channelId)
+		var info []redis.DirectInfo = []redis.DirectInfo{direct}
+		r.SetValues(streamId, info)
 		t.InitiateStream()
 	} else {
 		log.Println(b)
@@ -69,17 +74,19 @@ func (b *BotGo) streamingTweet(channelId string) {
 	}
 }
 
-func (b *BotGo) stopStreaming(channelId string) {
-
+// delete webhook
+func (b *BotGo) stopStreaming(channelId string, json httpClient.JsonData) {
+	c := *b.client
+	for i := range json.WebHooks {
+		c.DeleteWebhookInChannel(json.WebHooks[i].Id)
+	}
 }
 
 func (b *BotGo) streaming(channelId string, opts *Option, json httpClient.JsonData) {
-	b.setOptsAndJson(opts, json)
-
 	if opts.Command == "!stream" {
-		b.streamingTweet(channelId)
+		b.streamingTweet(channelId, opts, json)
 	} else if opts.Command == "!stop" {
-		b.stopStreaming(channelId)
+		b.stopStreaming(channelId, json)
 	}
 }
 
@@ -122,13 +129,18 @@ func (b *BotGo) setSessionAndMsgCreate(s *discordgo.Session, m *discordgo.Messag
 	b.message = m
 }
 
-func (b *BotGo) setOptsAndJson(opts *Option, json httpClient.JsonData) {
-	b.json = json
-	b.opts = opts
+func newDirectInfo(json httpClient.JsonData, channelId string) redis.DirectInfo {
+	return redis.DirectInfo{
+		WebhookUrl:       fmt.Sprintf(basewebhook+"%s/%s", json.WebHook.Id, json.WebHook.Token),
+		WebhookId:        json.WebHook.Id,
+		WebhookToken:     json.WebHook.Token,
+		DiscordChannelId: channelId,
+	}
 }
 
 func NewBotGo() Bot {
-	httpClient := httpClient.NewHttpClient(tweetStream.GoDotEnvVariable("BOTTOKEN"))
-	twitterStream := tweetStream.NewTwitterStreamAPI(tweetStream.GoDotEnvVariable("BEARER_TOKEN"))
-	return &BotGo{client: &httpClient, twitterStream: &twitterStream}
+	httpClient := httpClient.NewHttpClient(config.GoDotEnvVariable("BOTTOKEN"))
+	twitterStream := tweetStream.NewTwitterStreamAPI(config.GoDotEnvVariable("BEARER_TOKEN"))
+	redisClient := redis.NewRedisClient(config.GoDotEnvVariable("ADDR"))
+	return &BotGo{client: &httpClient, twitterStream: &twitterStream, redisClient: &redisClient}
 }

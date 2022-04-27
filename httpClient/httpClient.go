@@ -14,6 +14,7 @@ type (
 		CreateWebhook(string, string) (JsonData, error)
 		GetChannelWebhooks(string) (JsonData, error)
 		NewHttpRequest(opts *RequestOpts) (*http.Response, error)
+		DeleteWebhookInChannel(string) error
 	}
 	HttpClient struct {
 		token string
@@ -49,6 +50,19 @@ func (c *HttpClient) GetChannelWebhooks(channelId string) (JsonData, error) {
 	}
 
 	return c.ParseJson(opts, res)
+}
+
+func (c *HttpClient) DeleteWebhookInChannel(webhookid string) error {
+	opts := &RequestOpts{
+		Method: "DELETE",
+		Url:    Endpoint["base"] + fmt.Sprintf("webhooks/%s", webhookid),
+	}
+
+	_, err := c.NewHttpRequest(opts)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // http Request
